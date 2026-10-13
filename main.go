@@ -589,6 +589,25 @@ func reply(ctx context.Context, in *aliceReq) (string, bool) {
 	sid := in.Session.SessionID
 	cmd := strings.TrimSpace(in.Request.Command)
 
+	raw := normalize(cmd)
+	log.Printf("%s heard: %q", short(sid), raw)
+	if isActivation(raw) {
+		return "Я здесь. Задай вопрос или скажи «как пользоваться».", false
+	}
+	if stripped := stripPrefix(raw); stripped != raw {
+		cmd = stripped
+		if cmd == "" {
+			return "Я здесь. Задай вопрос.", false
+		}
+	}
+	if exitWords[normalize(cmd)] {
+		hist.drop(sid)
+		return "Пока.", true
+	}
+	if leaveFor(normalize(cmd)) {
+		hist.drop(sid)
+		return "Выхожу из навыка. Повтори это Алисе: она сделает.", true
+	}
 	if text, ok := tutorial(sid, normalize(cmd)); ok {
 		return text, false
 	}
