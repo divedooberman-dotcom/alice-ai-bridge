@@ -14,7 +14,7 @@ func TestPhrases(t *testing.T) {
 	if !exitWords[stripPrefix("алиса хватит")] || !leaveFor("включи музыку") || leaveFor("почему музыка грустная") {
 		t.Fatal("exit / leave")
 	}
-	if !isActivation("включи навык супер интеллект") || isActivation("что такое суперинтеллект в фантастике") {
+	if !isActivation("запусти навык чат джи пи ти") || !isActivation("включи навык супер интеллект") || isActivation("что такое суперинтеллект в фантастике") {
 		t.Fatal("activation")
 	}
 }

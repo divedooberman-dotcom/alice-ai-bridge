@@ -35,5 +35,10 @@ func leaveFor(cmd string) bool {
 
 func isActivation(cmd string) bool {
 	c := strings.ReplaceAll(cmd, "супер интеллект", "суперинтеллект")
-	return strings.Contains(c, "навык суперинтеллект") || c == "суперинтеллект" || c == "суперинтеллекта"
+	for _, name := range []string{"суперинтеллект", "чат джи пи ти", "чат джипити", "чат гпт"} {
+		if strings.Contains(c, "навык "+name) || c == name {
+			return true
+		}
+	}
+	return c == "суперинтеллекта"
 }
