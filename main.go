@@ -77,14 +77,17 @@ var (
 	reasoning = getenv("LLM_REASONING_EFFORT", "")
 	maxTokens = getenvInt("LLM_MAX_TOKENS", 300)
 	timeout   = time.Duration(getenvInt("LLM_TIMEOUT_MS", 2500)) * time.Millisecond
-	genTime   = time.Duration(getenvInt("LLM_GEN_TIMEOUT_MS", 60000)) * time.Millisecond
-	chunkLen  = getenvInt("CHUNK_RUNES", 600)
-	historyN  = getenvInt("HISTORY_TURNS", 5)
-	listen    = getenv("LISTEN_ADDR", ":8080")
-	path      = getenv("WEBHOOK_PATH", "/alice")
-	tzName    = getenv("TIMEZONE", "")
-	danger    = getenv("DANGER_REPLY", "Я не могу помочь с этим. Если тебе тяжело или кто-то в опасности, поговори с близкими или позвони в экстренные службы по номеру 112.")
-	skillIDs  = strings.FieldsFunc(getenv("ALLOWED_SKILL_ID", ""), func(r rune) bool { return r == ',' || unicode.IsSpace(r) })
+	// Extra wait when not even one sentence is ready at the deadline (slow first token): instead
+	// of «Ещё думаю» wait up to this long for the first sentence to finish. 0 = upstream behaviour.
+	grace    = time.Duration(getenvInt("LLM_GRACE_MS", 0)) * time.Millisecond
+	genTime  = time.Duration(getenvInt("LLM_GEN_TIMEOUT_MS", 60000)) * time.Millisecond
+	chunkLen = getenvInt("CHUNK_RUNES", 600)
+	historyN = getenvInt("HISTORY_TURNS", 5)
+	listen   = getenv("LISTEN_ADDR", ":8080")
+	path     = getenv("WEBHOOK_PATH", "/alice")
+	tzName   = getenv("TIMEZONE", "")
+	danger   = getenv("DANGER_REPLY", "Я не могу помочь с этим. Если тебе тяжело или кто-то в опасности, поговори с близкими или позвони в экстренные службы по номеру 112.")
+	skillIDs = strings.FieldsFunc(getenv("ALLOWED_SKILL_ID", ""), func(r rune) bool { return r == ',' || unicode.IsSpace(r) })
 
 	client = &http.Client{Transport: &http.Transport{
 		MaxIdleConnsPerHost: 32,
@@ -354,6 +357,11 @@ func (a *answer) next(ctx context.Context, budget time.Duration) (chunk string, 
 		case <-ctx.Done():
 		}
 		a.mu.Lock()
+		if grace > 0 && !a.done && !hasSentence(a.text[a.sent:]) {
+			a.mu.Unlock()
+			a.waitFirstSentence(ctx, grace)
+			a.mu.Lock()
+		}
 		break
 	}
 	defer a.mu.Unlock()
@@ -362,6 +370,42 @@ func (a *answer) next(ctx context.Context, budget time.Duration) (chunk string, 
 	n := cut(rest, a.done)
 	a.sent += n
 	return rest[:n], !a.done || a.sent < len(a.text), a.err
+}
+
+// waitFirstSentence blocks until a complete sentence is available, the answer is done, or d passes.
+func (a *answer) waitFirstSentence(ctx context.Context, d time.Duration) {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	for {
+		a.mu.Lock()
+		ready := a.done || hasSentence(a.text[a.sent:])
+		ch := a.changed
+		a.mu.Unlock()
+		if ready {
+			return
+		}
+		select {
+		case <-ch:
+		case <-t.C:
+			return
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// hasSentence reports a finished sentence: a terminator followed by whitespace (as in cut).
+func hasSentence(s string) bool {
+	prev := rune(0)
+	for i, r := range s {
+		if strings.ContainsRune(".!?…", r) && !(r == '.' && unicode.IsDigit(prev)) {
+			if next, _ := utf8.DecodeRuneInString(s[i+utf8.RuneLen(r):]); unicode.IsSpace(next) {
+				return true
+			}
+		}
+		prev = r
+	}
+	return false
 }
 
 func cut(s string, done bool) int {
