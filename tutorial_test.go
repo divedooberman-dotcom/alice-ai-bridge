@@ -39,6 +39,9 @@ func TestTutorialWalksAllStepsWithinAliceLimits(t *testing.T) {
 	if _, ok := tutorial(sid, "сколько будет два плюс два"); ok {
 		t.Fatal("a question leaves the tutorial")
 	}
+	if !isTutorialStart("расскажи инструкцию") || isTutorialStart("найди инструкцию к ноутбуку сёрфейс лэптоп ультра пожалуйста") {
+		t.Fatal("instruction phrases")
+	}
 	if !isTutorialStart("как пользоваться супер интеллектом") {
 		t.Fatal("two-word name must start the tutorial")
 	}

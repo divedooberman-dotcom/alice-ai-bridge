@@ -79,8 +79,9 @@ var (
 
 func isTutorialStart(cmd string) bool {
 	c := strings.ReplaceAll(cmd, "супер интеллект", "суперинтеллект")
-	return strings.Contains(c, "как пользоваться") || c == "обучение" || c == "инструкция" ||
-		c == "начать обучение" || strings.Contains(c, "научи меня")
+	words := strings.Fields(c)
+	return len(words) <= 6 && (strings.Contains(c, "как пользоваться") || strings.Contains(c, "инструкци") ||
+		strings.Contains(c, "обучени") || strings.Contains(c, "научи меня"))
 }
 
 // tutorial returns the next tutorial reply for this session; ok=false when not in a tutorial.
