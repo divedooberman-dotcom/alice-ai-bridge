@@ -1,0 +1,21 @@
+[Unit]
+Description=Alice skill frontend (alice-ai-bridge) -> ChatGPT plan gateway (alice-gpt)
+After=network-online.target alice-gpt.service
+Wants=network-online.target
+
+[Service]
+User=aab
+WorkingDirectory=/opt/alice-ai-bridge
+Environment=ENV_FILE=/opt/alice-ai-bridge/.env
+ExecStart=/opt/alice-ai-bridge/alice-ai-bridge
+Restart=always
+RestartSec=2
+MemoryMax=60M
+MemorySwapMax=0
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
