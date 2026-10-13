@@ -64,8 +64,6 @@ var (
 	}
 	menu = "Голосовое меню. Модели: «быстрая модель», «умная модель», «модель астра». " +
 		"Сила рассуждений: «сила минимальная», «низкая», «средняя», «высокая», «максимальная». " +
-		"Голос: «голос Алена», «голос Филипп», «голос Эрмил», «голос Захар» и другие, «голос по умолчанию». " +
-		"Эффект: «эффект мегафон», «хомяк», «из-за стены», «вокзал», «без эффекта». " +
 		"«Какие настройки» — что включено сейчас. «Как пользоваться суперинтеллектом» — обучение с примерами голосов."
 
 	prefsMu   sync.Mutex
@@ -145,7 +143,8 @@ func describe(p prefs) string {
 			fx = name
 		}
 	}
-	return fmt.Sprintf("Сейчас: модель %s, сила рассуждений %s, голос %s, эффект %s.", m, e, v, fx)
+	_, _ = v, fx
+	return fmt.Sprintf("Сейчас: модель %s, сила рассуждений %s.", m, e)
 }
 
 func hasAny(cmd string, words []string) bool {
@@ -184,24 +183,19 @@ func voiceMenu(uid, cmd string) (string, bool) {
 			}
 		}
 	case words[0] == "голос" && len(words) >= 2:
-		if id, ok := voices[strings.Join(words[1:], " ")]; ok {
-			return "Хорошо. Так звучит новый голос. " + describe(updatePrefs(uid, func(p *prefs) { p.Voice = id })), true
-		}
-		return "Не знаю такого голоса. Скажи «меню», чтобы услышать варианты.", true
+		// <speaker voice> makes Alice drop the whole reply: the voice is a console setting
+		updatePrefs(uid, func(p *prefs) { p.Voice = "" })
+		return "Голос навыка меняется только в настройках навыка в консоли Яндекса. Голосом могу включить эффект: например, «эффект мегафон».", true
 	case words[0] == "эффект" && len(words) >= 2:
-		if id, ok := effects[strings.Join(words[1:], " ")]; ok {
-			return "Хорошо. " + describe(updatePrefs(uid, func(p *prefs) { p.Effect = id })), true
-		}
-		return "Не знаю такого эффекта. Скажи «меню», чтобы услышать варианты.", true
+		// tested on the Midi: a reply with <speaker effect> is not spoken at all
+		updatePrefs(uid, func(p *prefs) { p.Effect = "" })
+		return "Эффекты голоса колонка в этом навыке не озвучивает, поэтому я их отключил.", true
 	}
 	return "", false
 }
 
 // tts wraps the spoken text in the user's voice and effect tags.
 func tts(text string, p prefs) string {
-	if p.Voice != "" {
-		text = `<speaker voice="` + p.Voice + `">` + text
-	}
 	if p.Effect != "" {
 		text = `<speaker effect="` + p.Effect + `">` + text
 	}

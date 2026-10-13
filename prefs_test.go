@@ -14,8 +14,8 @@ func TestVoiceMenu(t *testing.T) {
 		{"меню", "Голосовое меню"},
 		{"умная модель", "модель умная"},
 		{"сила высокая", "сила рассуждений высокая"},
-		{"голос алена", "голос алена"},
-		{"эффект мегафон", "эффект мегафон"},
+		{"голос алена", "только в настройках"},
+		{"эффект мегафон", "не озвучивает"},
 		{"какие настройки", "модель умная, сила рассуждений высокая"},
 	}
 	for _, c := range cases {
@@ -34,12 +34,9 @@ func TestVoiceMenu(t *testing.T) {
 	if m, e := requestModel(withPrefs(context.Background(), p)); m != "gpt-6.1-sol" || e != "high" {
 		t.Fatalf("requestModel = %s %s", m, e)
 	}
-	if got := tts("Привет.", p); got != `<speaker effect="megaphone"><speaker voice="alena">Привет.` {
-		t.Fatalf("tts = %q", got)
-	}
 	userPrefs = map[string]prefs{}
 	loadPrefs()
-	if prefsOf("u1").Voice != "alena" {
+	if prefsOf("u1").Model != "gpt-6.1-sol" {
 		t.Fatal("prefs not persisted")
 	}
 }

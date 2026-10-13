@@ -14,39 +14,17 @@ type step struct{ text, tts string }
 const sample = "Привет, Руслан! Я Супер интеллект."
 
 func voiceDemo() step {
-	order := []struct{ id, name string }{
-		{"alena", "Алена"}, {"filipp", "Филипп"}, {"ermil", "Эрмил"}, {"jane", "Джейн"},
-		{"omazh", "Омаж"}, {"zahar", "Захар"}, {"marina", "Марина"}, {"alexander", "Александр"},
-	}
-	var t strings.Builder
-	t.WriteString("Шаг три: голоса. Сейчас одна фраза прозвучит разными голосами. ")
-	for _, v := range order {
-		t.WriteString(`<speaker voice="` + v.id + `">Голос ` + v.name + ". " + sample + " sil <[400]> ")
-	}
-	t.WriteString(`<speaker voice="zahar">Чтобы выбрать голос, скажи, например, «голос Алена». Вернуть обычный — «голос по умолчанию». Дальше?`)
-	return step{
-		text: "Шаг 3. Голоса: Алена, Филипп, Эрмил, Джейн, Омаж, Захар, Марина, Александр и другие. " +
-			"Выбрать: «голос Алена». Вернуть: «голос по умолчанию». Дальше?",
-		tts: t.String(),
-	}
+	// Alice drops a reply that contains <speaker voice="…"> (tested on the Midi, Oct 2026):
+	// the voice is a skill setting in the Dialogs console, so this step only explains it.
+	text := "Шаг 3. Голос. Голос навыка один, он выбирается в настройках навыка в консоли Яндекса: " +
+		"переключить его голосом нельзя, Яндекс это не поддерживает. Зато можно менять эффекты — " +
+		"об этом следующий шаг. Дальше?"
+	return step{text: text}
 }
 
 func effectDemo() step {
-	order := []struct{ id, name string }{
-		{"megaphone", "мегафон"}, {"behind_the_wall", "из-за стены"}, {"hamster", "хомяк"},
-		{"pitch_down", "низкий"}, {"train_announce", "вокзал"}, {"pulse", "пульс"}, {"psychodelic", "психоделический"},
-	}
-	var t strings.Builder
-	t.WriteString("Шаг четыре: эффекты. ")
-	for _, e := range order {
-		t.WriteString("Эффект " + e.name + ". " + `<speaker effect="` + e.id + `">` + sample + `<speaker effect="-"> sil <[400]> `)
-	}
-	t.WriteString("Включить: «эффект мегафон». Выключить: «без эффекта». Дальше?")
-	return step{
-		text: "Шаг 4. Эффекты: мегафон, из-за стены, хомяк, низкий, вокзал, пульс, психоделический. " +
-			"Включить: «эффект мегафон». Выключить: «без эффекта». Дальше?",
-		tts: t.String(),
-	}
+	return step{text: "Шаг 4. Голос и эффекты. Яндекс не озвучивает в этом навыке смену голоса и эффекты: " +
+		"такой ответ колонка просто проглатывает. Поэтому я говорю одним голосом, который задан в настройках навыка. Дальше?"}
 }
 
 var tutorialSteps = []step{

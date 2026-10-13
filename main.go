@@ -695,8 +695,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	out.Response.Text, out.Response.EndSession = reply(r.Context(), &in)
 	if demo, ok := takeTTS(in.Session.SessionID); ok {
 		out.Response.TTS = demo
-	} else if p := prefsOf(userID(&in)); p.Voice != "" || p.Effect != "" {
-		out.Response.TTS = tts(out.Response.Text, p)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
