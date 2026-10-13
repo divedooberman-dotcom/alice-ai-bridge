@@ -13,7 +13,7 @@ Build and deploy from the Mac:
 `/opt/alice-ai-bridge/.env` (root:aab 640, not in git): LISTEN_ADDR=127.0.0.1:8790,
 WEBHOOK_PATH=/aab/<secret>/alice, ALLOWED_SKILL_ID, TIMEZONE=Asia/Dubai,
 LLM_BASE_URL=http://127.0.0.1:8787/v1, LLM_API_KEY=<ALICE_LLM_SECRET>, LLM_MODEL=gpt-6-luna,
-LLM_MAX_TOKENS=1200, LLM_TIMEOUT_MS=2800, CHUNK_RUNES=900, HISTORY_TURNS=6.
+LLM_MAX_TOKENS=1200, LLM_TIMEOUT_MS=2500, CHUNK_RUNES=600 (upstream defaults), HISTORY_TURNS=6.
 
 ## Skills
 - **Семейный ИИ** (`aeefbe5e-…1959`, private, created 2026-10-13) — main. «Алиса, запусти навык Семейный ИИ».
