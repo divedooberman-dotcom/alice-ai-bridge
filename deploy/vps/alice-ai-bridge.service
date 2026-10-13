@@ -7,6 +7,8 @@ Wants=network-online.target
 User=aab
 WorkingDirectory=/opt/alice-ai-bridge
 Environment=ENV_FILE=/opt/alice-ai-bridge/.env
+Environment=PREFS_FILE=/var/lib/alice-ai-bridge/prefs.json
+StateDirectory=alice-ai-bridge
 ExecStart=/opt/alice-ai-bridge/alice-ai-bridge
 Restart=always
 RestartSec=2

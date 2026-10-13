@@ -55,6 +55,7 @@ type respSession struct {
 type aliceResp struct {
 	Response struct {
 		Text       string `json:"text"`
+		TTS        string `json:"tts,omitempty"`
 		EndSession bool   `json:"end_session"`
 	} `json:"response"`
 	Session respSession `json:"session"`
@@ -401,9 +402,9 @@ func runeOffset(s string, n int) int {
 	return -1
 }
 
-func startAnswer(sid, sys, prompt string) *answer {
+func startAnswer(sid, sys, prompt string, p prefs) *answer {
 	past := hist.get(sid)
-	ctx, cancel := context.WithTimeout(genCtx, genTime)
+	ctx, cancel := context.WithTimeout(withPrefs(genCtx, p), genTime)
 	a := &answer{changed: make(chan struct{}), cancel: cancel, finished: make(chan struct{})}
 	gens.Add(1)
 	go func() {
@@ -434,14 +435,15 @@ func streamLLM(ctx context.Context, past []chatMsg, sys, prompt string, onDelta 
 	msgs = append(msgs, past...)
 	msgs = append(msgs, chatMsg{Role: "user", Content: prompt})
 
+	reqModel, reqEffort := requestModel(ctx)
 	payload := map[string]any{
-		"model":      model,
+		"model":      reqModel,
 		"messages":   msgs,
 		"max_tokens": maxTokens,
 		"stream":     true,
 	}
-	if reasoning != "" {
-		payload["reasoning_effort"] = reasoning
+	if reqEffort != "" {
+		payload["reasoning_effort"] = reqEffort
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -607,6 +609,10 @@ func reply(ctx context.Context, in *aliceReq) (string, bool) {
 		}
 	}
 
+	if text, ok := voiceMenu(userID(in), normalize(cmd)); ok {
+		return text, false
+	}
+
 	// command is lowercased and stripped of punctuation; prefer the original phrase
 	// unless it also contains the activation part ("запусти навык …").
 	prompt := cmd
@@ -627,7 +633,7 @@ func reply(ctx context.Context, in *aliceReq) (string, bool) {
 		log.Printf("%s dangerous_context: fixed reply", short(sid))
 		return danger, false
 	}
-	a := startAnswer(sid, systemPrompt(in.Meta.Timezone), prompt)
+	a := startAnswer(sid, systemPrompt(in.Meta.Timezone), prompt, prefsOf(uid))
 	hist.setPending(sid, a)
 	return speak(ctx, sid, "answer", a), false
 }
@@ -664,6 +670,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	out.Response.Text, out.Response.EndSession = reply(r.Context(), &in)
+	if p := prefsOf(userID(&in)); p.Voice != "" || p.Effect != "" {
+		out.Response.TTS = tts(out.Response.Text, p)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(out); err != nil {
@@ -672,6 +681,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	loadPrefs()
 	mux := http.NewServeMux()
 	mux.HandleFunc(path, handler)
 	srv := &http.Server{
