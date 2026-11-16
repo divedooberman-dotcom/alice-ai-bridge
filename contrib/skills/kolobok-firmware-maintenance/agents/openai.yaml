@@ -1,0 +1,4 @@
+interface:
+  display_name: "Обслуживание Колобка"
+  short_description: "Прошивка, место на диске и сервисы Колобка"
+  default_prompt: "Используй $kolobok-firmware-maintenance, чтобы проверить прошивку, свободное место и сервисы Колобка."
