@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+base=/data/opt/platformd-ifaddr-guard
+target=/system/vendor/quasar/launch.json
+is_mounted() {
+    awk '$2=="/system/vendor/quasar/launch.json" {found=1} END {exit !found}' /proc/mounts
+}
+case "${1:-}" in
+start)
+    [ "$(sha256sum /system/vendor/quasar/maind | cut -d ' ' -f1)" = ae53daaf1d1867744017bb6939d7fa2c95f0d76468f8472a273ab041a895642b ] || exit 1
+    [ "$(sha256sum "$base/guard.so" | cut -d ' ' -f1)" = 4a4a05f51813739470d7be7bea9807e54d2d2829989c1eec7c83eb4224078e12 ] || exit 1
+    if is_mounted; then
+        cmp -s "$target" "$base/launch.guarded.json"
+        exit $?
+    fi
+    [ "$(sha256sum "$target" | cut -d ' ' -f1)" = 37142beec68773b425865aa7dd889ede513734630d9f43f4658d9b7284b03129 ] || exit 1
+    mount -o bind "$base/launch.guarded.json" "$target"
+    ;;
+stop)
+    if is_mounted; then
+        cmp -s "$target" "$base/launch.guarded.json" || exit 1
+        # Launcher keeps this file open. Detach the overlay for the NEXT launch;
+        # the old process may finish reading its unchanged open descriptor.
+        umount -l "$target"
+    fi
+    ;;
+*) exit 2 ;;
+esac

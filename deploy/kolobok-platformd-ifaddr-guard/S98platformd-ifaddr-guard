@@ -1,0 +1,56 @@
+#!/bin/sh
+# Kolobok: bind guarded launcher profiles over the two profiles that start
+# maind --platformd. Runs before S99quasar. Every step is gated on exact
+# hashes; any mismatch leaves that profile exactly as it is (unguarded).
+base=/data/opt/platformd-ifaddr-guard
+MAIND=69f4f147fe50c435de5a37f1d8397a91e338c7ab762100c9f2757e010c13df49
+GUARD=fdcd4736622600ae8acfb5f60ae813764cc5aa2c9371752751981fd756c8c996
+STOCK=/system/vendor/quasar/launch.json
+STOCK_HASH=0861c4c1b12792c2fece90ad8367fcfd4326bd0d6ea8275ffb752af7d4366703
+STOCK_GUARDED=$base/launch.stock.guarded.json
+STOCK_GUARDED_HASH=de2835623e9c72358c9f9be42ae8a56cd94072b547bd79af987698f3b5e8a632
+# /data is a symlink; /proc/mounts lists the resolved path, so name it directly.
+BRIDGE=/bkupgrade/data/opt/alisa-standalone/launch.bridge.json
+BRIDGE_HASH=baf97568435c2828fc1f9ff80814fc9c308ab71884ab51499084f8f4a71addc1
+BRIDGE_GUARDED=$base/launch.bridge.guarded.json
+BRIDGE_GUARDED_HASH=1760d65946183514b029f1add6575df66000e1fd3442caea5082f8e8b3d5aaeb
+note() { logger -t platformd-ifaddr-guard "$1" 2>/dev/null || true; }
+hash() { sha256sum "$1" 2>/dev/null | cut -d ' ' -f1; }
+is_mounted() { awk -v t="$1" '$2==t {found=1} END {exit !found}' /proc/mounts; }
+# target, audited original hash, guarded copy, guarded copy hash
+attach() {
+    if is_mounted "$1"; then cmp -s "$1" "$3"; return $?; fi
+    if [ "$(hash "$1")" != "$2" ] || [ "$(hash "$3")" != "$4" ]; then
+        note "profile changed; not guarding $1"
+        return 1
+    fi
+    mount -o bind "$3" "$1"
+}
+detach() {
+    is_mounted "$1" || return 0
+    cmp -s "$1" "$2" || return 1
+    # The launcher may hold the file open; detach for the NEXT launch.
+    umount -l "$1"
+}
+case "${1:-}" in
+start)
+    [ "$(hash /system/vendor/quasar/maind)" = "$MAIND" ] || { note 'maind changed; not guarding'; exit 1; }
+    [ "$(hash "$base/guard.so")" = "$GUARD" ] || { note 'guard.so changed; not guarding'; exit 1; }
+    rc=0
+    attach "$STOCK" "$STOCK_HASH" "$STOCK_GUARDED" "$STOCK_GUARDED_HASH" || rc=1
+    attach "$BRIDGE" "$BRIDGE_HASH" "$BRIDGE_GUARDED" "$BRIDGE_GUARDED_HASH" || rc=1
+    exit $rc
+    ;;
+stop)
+    rc=0
+    detach "$STOCK" "$STOCK_GUARDED" || rc=1
+    detach "$BRIDGE" "$BRIDGE_GUARDED" || rc=1
+    exit $rc
+    ;;
+status)
+    for target in "$STOCK" "$BRIDGE"; do
+        if is_mounted "$target"; then echo "guarded   $target"; else echo "unguarded $target"; fi
+    done
+    ;;
+*) exit 2 ;;
+esac
